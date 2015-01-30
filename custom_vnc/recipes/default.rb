@@ -57,15 +57,8 @@ cookbook_file "passwd" do
   action :create_if_missing
 end
 
-case node["platform_family"]
-when "debian"
-  execute 'start_vnc' do
-    command "/usr/local/etc/spawn-desktop.sh"
-    not_if { ::File.exists?("/root/.vnc/adc816125a12:1.pid")}
-  end
-when "rhel"
-  execute 'start_vnc' do
-    command "/usr/local/etc/spawn-desktop.sh"
-    not_if { ::File.exists?("/root/.vnc/91ecc29c9823:1.pid")}
-  end
+execute 'start_vnc' do
+  command "/usr/local/etc/spawn-desktop.sh"
+  only_if { ::Dir.glob("/root/.vnc/*.pid").empty? }
+# not_if { ::File.exists?("/root/.vnc/adc816125a12:1.pid")}
 end
