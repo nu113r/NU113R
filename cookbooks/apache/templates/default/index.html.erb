@@ -1,0 +1,16 @@
+<html>
+<body>
+<h1>Welcome to <%= node["company"] %> </h1>
+<h2>Hello from <%= node["fqdn"] %>!</h2>
+Hello from <%= node["hostname"] %>
+<p>
+This server has <%= node["memory"]["total"].to_i / 1024 %> MB memory.
+</p>
+<p>
+This is version 0.2.0 of the cookbook!
+This change is simple but an effective way of demonstarting cookbook versions.
+</p>
+<p>We love <%= @site_name %></p>
+<p>Served from <%= node['ipaddress'] %>:<%= @port %></p>
+</body>
+</html>

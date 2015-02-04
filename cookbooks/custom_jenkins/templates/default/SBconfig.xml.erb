@@ -1,0 +1,157 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>I&apos;ll setup feature branch, I&apos;ll mainly do following operations&#xd;
+1.) Create a feature branch&#xd;
+2.) Create a Code Quality Job&#xd;
+3.) Launch a docker container that will be used by the corresponding code quality job&#xd;
+4.) Send a notification details along with how to connect to docker</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.buildblocker.BuildBlockerProperty plugin="build-blocker-plugin@1.4.1">
+      <useBuildBlocker>false</useBuildBlocker>
+    </hudson.plugins.buildblocker.BuildBlockerProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>BRANCH_NAME</name>
+          <description>Name of branch to be created, Do not give spaces</description>
+          <defaultValue>feature</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.3.2">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:mulesoft-web/ProgrammableWeb</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/${BRANCH_NAME}</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+source /var/lib/jenkins/JobScripts/git_functions.sh
+source /var/lib/jenkins/JobScripts/jenkins_functions.sh
+source /var/lib/jenkins/JobScripts/util_functions.sh
+source /var/lib/jenkins/JobScripts/docker_functions.sh
+source /var/lib/jenkins/JobScripts/create_container_html.sh
+
+#create_branch ${WORKSPACE} master ${BRANCH_NAME}
+
+createJobConfigFromTemplate ~/JobScripts/WrapperTemplate.xml ${BRANCH_NAME} /tmp/config1.xml
+createJobConfigFromTemplate ~/JobScripts/UnitTestTemplate.xml ${BRANCH_NAME} /tmp/config2.xml
+createJobConfigFromTemplate ~/JobScripts/FunctionalTestTemplate.xml ${BRANCH_NAME} /tmp/config3.xml
+createJobConfigFromTemplate ~/JobScripts/StaticCodeAnalysisTemplate.xml ${BRANCH_NAME} /tmp/config4.xml
+
+assign_ports &quot;${BRANCH_NAME}_Server&quot; 
+HOST_SSH_PORT=`getSSHPort &quot;${BRANCH_NAME}_Server&quot;`
+HOST_VNC_PORT=`getVNCPort &quot;${BRANCH_NAME}_Server&quot;`
+HOST_NGINX_PORT=`getNginxPort &quot;${BRANCH_NAME}_Server&quot;`
+
+create_container &quot;${BRANCH_NAME}_Server&quot; ${HOST_SSH_PORT} 22 ${HOST_VNC_PORT} 5901 ${HOST_NGINX_PORT} 80 vnc_php_test
+
+sleep 30
+
+echo "Copying the database to the container.";
+setup_mysql ${HOST_SSH_PORT}
+
+echo "Copying the files to the container.";
+copy_files ${HOST_SSH_PORT};
+
+#ssh root@localhost -p ${HOST_SSH_PORT} &quot;cd /root/sahi/bin &amp;&amp; ./sahi.sh &gt; /dev/null &amp;&quot;
+
+#echo &quot;${BRANCH_NAME}&quot; &gt;&gt; /var/lib/jenkins/branch_changes/branch_list
+#sort /var/lib/jenkins/branch_changes/branch_list &gt; /var/lib/jenkins/branch_changes/branch_list.sorted
+#mv /var/lib/jenkins/branch_changes/branch_list.sorted /var/lib/jenkins/branch_changes/branch_list
+
+createJob &quot;${BRANCH_NAME}MultiJob&quot; /tmp/config1.xml
+createJob &quot;${BRANCH_NAME}UnitTest&quot; /tmp/config2.xml
+createJob &quot;${BRANCH_NAME}FunctionalTest&quot; /tmp/config3.xml
+createJob &quot;${BRANCH_NAME}StaticCodeAnalysis&quot; /tmp/config4.xml
+
+
+echo &quot;Created a docker container for feature branch ${BRANCH_NAME} with ports:&quot;
+echo &quot;SSH =&gt; ${HOST_SSH_PORT}&quot;
+echo &quot;VNC =&gt; ${HOST_VNC_PORT}&quot;
+echo &quot;NGINX =&gt; ${HOST_NGINX_PORT}&quot;
+
+
+BRANCH_AUTHOR_EMAIL=$(get_branch_author_email ${BRANCH_NAME})
+echo &quot;I&apos;ve to send mail to $BRANCH_AUTHOR_EMAIL about the branch getting tracked by CI system&quot;
+echo &quot;EMAIL=$BRANCH_AUTHOR_EMAIL&quot; &gt; email.txt
+</command>
+    </hudson.tasks.Shell>
+    <EnvInjectBuilder plugin="envinject@1.90">
+      <info>
+        <propertiesFilePath>email.txt</propertiesFilePath>
+      </info>
+    </EnvInjectBuilder>
+  </builders>
+  <publishers>
+    <hudson.plugins.emailext.ExtendedEmailPublisher plugin="email-ext@2.39">
+      <recipientList>$DEFAULT_RECIPIENTS</recipientList>
+      <configuredTriggers>
+        <hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+          <email>
+            <recipientList>$DEFAULT_RECIPIENTS</recipientList>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.ListRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+        <hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+          <email>
+            <recipientList>$DEFAULT_RECIPIENTS,$EMAIL</recipientList>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>Now our CI system is managing your branch, check our CI dashboard for details about your branches
+http://104.236.154.212
+$PROJECT_DEFAULT_CONTENT
+</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.DevelopersRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+      </configuredTriggers>
+      <contentType>default</contentType>
+      <defaultSubject>$DEFAULT_SUBJECT</defaultSubject>
+      <defaultContent>$DEFAULT_CONTENT</defaultContent>
+      <attachmentsPattern></attachmentsPattern>
+      <presendScript>$DEFAULT_PRESEND_SCRIPT</presendScript>
+      <attachBuildLog>true</attachBuildLog>
+      <compressBuildLog>false</compressBuildLog>
+      <replyTo>$DEFAULT_REPLYTO</replyTo>
+      <saveOutput>false</saveOutput>
+      <disabled>false</disabled>
+    </hudson.plugins.emailext.ExtendedEmailPublisher>
+  </publishers>
+  <buildWrappers/>
+</project>
