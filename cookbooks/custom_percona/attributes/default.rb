@@ -5,5 +5,4 @@ default["percona"]["node"]["address"] = "172.17.0.13"
 default["percona"]["cluster"]["address"] = "172.17.0.13,172.17.0.14,172.17.0.15"
 default["percona"]["node"]["name"] = "cluster1"
 default["percona"]["cluster"]["name"] = "mydockerpxc"
-default["percona"]["bootstrap"]["node"] = "172.17.0.13"
 default["percona"]["bootstrap"] = true
