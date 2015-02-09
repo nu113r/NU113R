@@ -41,7 +41,7 @@ case node["percona"]["bootstrap"]
 when true
   bash "create_auth_user" do
     code <<-EOH
-      /etc/init.d/mysql bootstrap-pxc
+      service mysql bootstrap-pxc
       mysql -e "GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'sst'@'localhost' IDENTIFIED BY 'secret';"
     EOH
   end
