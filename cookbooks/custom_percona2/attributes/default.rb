@@ -1,0 +1,13 @@
+default["percona"]["cluster"]["package"]                        = "percona-xtradb-cluster-56"
+default["percona"]["main_config_file"]                          = "/etc/mysql/my.cnf"
+default["percona"]["skip_passwords"]                            = true
+default["percona"]["cluster"]["wsrep_cluster_address"]          = "gcomm://172.17.0.8,172.17.0.9,172.17.0.10"
+default["percona"]["cluster"]["wsrep_cluster_name"]             = "newcluster"
+default["percona"]["cluster"]["wsrep_sst_method"]               = "xtrabackup-v2"
+default["percona"]["cluster"]["wsrep_sst_auth"]                 = "sst:secret"
+default["percona"]["server"]["bind_address"]                    = ""
+default["percona"]["server"]["role"]                            = "cluster"
+default["percona"]["cluster"]["wsrep_node_name"]                = node['hostname']
+default["percona"]["cluster"]["wsrep_slave_threads"]            = 4
+default["percona"]["cluster"]["wsrep_sst_receive_interface"]    = "eth0"
+default["percona"]["cluster"]["wsrep_sst_receive_port"]         = ""
